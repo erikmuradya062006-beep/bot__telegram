@@ -2,7 +2,13 @@ import aiosqlite
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 
-DB_PATH = "clinic.db"
+import os
+
+# Создаем папку data, если ее еще нет, и сохраняем БД туда
+DATA_DIR = os.getenv("DATA_DIR", "./data")
+os.makedirs(DATA_DIR, exist_ok=True)
+
+DB_PATH = os.path.join(DATA_DIR, "clinic.db")
 
 
 async def init_db():
