@@ -1,5 +1,6 @@
 import logging
 import os
+from datetime import datetime
 from typing import Optional, List, Dict, Any
 
 import aiosqlite
@@ -17,6 +18,10 @@ _db_pool: Optional[asyncpg.Pool] = None
 
 def _use_postgres() -> bool:
     return DATABASE_URL is not None
+
+
+def _normalize_date(date_str: str):
+    return datetime.fromisoformat(date_str).date() if _use_postgres() else date_str
 
 
 async def init_db():
@@ -109,6 +114,7 @@ async def add_appointment(
     )
     if _use_postgres():
         async with _db_pool.acquire() as conn:
+            pg_date = _normalize_date(date)
             row = await conn.fetchrow(
                 """
                 INSERT INTO appointments
@@ -122,7 +128,7 @@ async def add_appointment(
                 phone,
                 service,
                 doctor,
-                date,
+                pg_date,
                 time,
             )
             appointment_id = row["id"]
@@ -242,6 +248,7 @@ async def is_slot_taken(doctor: str, date: str, time: str) -> bool:
     )
     if _use_postgres():
         async with _db_pool.acquire() as conn:
+            pg_date = _normalize_date(date)
             row = await conn.fetchrow(
                 """
                 SELECT 1 FROM appointments
@@ -249,7 +256,7 @@ async def is_slot_taken(doctor: str, date: str, time: str) -> bool:
                 LIMIT 1
                 """,
                 doctor,
-                date,
+                pg_date,
                 time,
             )
             found = row is not None
@@ -275,13 +282,14 @@ async def get_booked_slots(doctor: str, date: str) -> List[str]:
     logger.debug("get_booked_slots: doctor=%s date=%s", doctor, date)
     if _use_postgres():
         async with _db_pool.acquire() as conn:
+            pg_date = _normalize_date(date)
             rows = await conn.fetch(
                 """
                 SELECT time FROM appointments
                 WHERE doctor = $1 AND date = $2 AND status = 'active'
                 """,
                 doctor,
-                date,
+                pg_date,
             )
             times = [row["time"] for row in rows]
             logger.debug("get_booked_slots result=%s", times)
@@ -333,13 +341,14 @@ async def get_all_active_appointments(limit: int = 50) -> List[Dict[str, Any]]:
 async def get_appointments_by_date(date: str) -> List[Dict[str, Any]]:
     if _use_postgres():
         async with _db_pool.acquire() as conn:
+            pg_date = _normalize_date(date)
             rows = await conn.fetch(
                 """
                 SELECT * FROM appointments
                 WHERE date = $1 AND status = 'active'
                 ORDER BY time
                 """,
-                date,
+                pg_date,
             )
             return [dict(row) for row in rows]
 
