@@ -6,6 +6,13 @@ load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_IDS = [int(x) for x in os.getenv("ADMIN_IDS", "808010571").split(",") if x.strip()]
 
+# Для внешней PostgreSQL
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+# Для локального SQLite
+DATA_DIR = os.getenv("DATA_DIR", "./data")
+DB_PATH = os.getenv("DB_PATH", os.path.join(DATA_DIR, "clinic.db"))
+
 # Клиника
 CLINIC_NAME = "Стоматологическую клиника"
 
