@@ -9,7 +9,10 @@ from config import BOT_TOKEN
 from database import init_db
 from handlers import user, admin
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+)
 logger = logging.getLogger(__name__)
 
 

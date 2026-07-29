@@ -1,3 +1,5 @@
+import logging
+
 from aiogram import Router, F, Bot
 from aiogram.types import Message, CallbackQuery
 from aiogram.filters import Command, CommandStart
@@ -25,6 +27,7 @@ from database import (
 )
 
 router = Router()
+logger = logging.getLogger(__name__)
 
 
 def generate_time_slots() -> list[str]:
@@ -251,8 +254,23 @@ async def confirm_booking(callback: CallbackQuery, state: FSMContext, bot: Bot):
     date_str = data["date"]
     time_str = data["time"]
 
+    logger.info(
+        "confirm_booking start: user_id=%s doctor=%s date=%s time=%s",
+        callback.from_user.id,
+        doctor,
+        date_str,
+        time_str,
+    )
+
     # Финальная проверка слота
     if await is_slot_taken(doctor, date_str, time_str):
+        logger.warning(
+            "Slot already taken at confirmation: user_id=%s doctor=%s date=%s time=%s",
+            callback.from_user.id,
+            doctor,
+            date_str,
+            time_str,
+        )
         await callback.message.edit_text(
             "😔 К сожалению, это время только что заняли.\n"
             "Пожалуйста, начните запись заново."
@@ -261,16 +279,39 @@ async def confirm_booking(callback: CallbackQuery, state: FSMContext, bot: Bot):
         await callback.answer()
         return
 
-    appointment_id = await add_appointment(
-        user_id=callback.from_user.id,
-        username=callback.from_user.username,
-        full_name=data["full_name"],
-        phone=data["phone"],
-        service=data["service"],
-        doctor=doctor,
-        date=date_str,
-        time=time_str,
-    )
+    try:
+        appointment_id = await add_appointment(
+            user_id=callback.from_user.id,
+            username=callback.from_user.username,
+            full_name=data["full_name"],
+            phone=data["phone"],
+            service=data["service"],
+            doctor=doctor,
+            date=date_str,
+            time=time_str,
+        )
+        logger.info(
+            "Appointment confirmed: id=%s user_id=%s doctor=%s date=%s time=%s",
+            appointment_id,
+            callback.from_user.id,
+            doctor,
+            date_str,
+            time_str,
+        )
+    except Exception:
+        logger.exception(
+            "Failed to add appointment: user_id=%s doctor=%s date=%s time=%s",
+            callback.from_user.id,
+            doctor,
+            date_str,
+            time_str,
+        )
+        await callback.message.edit_text(
+            "❌ Произошла ошибка при сохранении записи. Попробуйте снова позже."
+        )
+        await state.clear()
+        await callback.answer()
+        return
 
     date_display = datetime.fromisoformat(date_str).strftime("%d.%m.%Y")
     await callback.message.edit_text(
