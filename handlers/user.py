@@ -213,7 +213,7 @@ async def process_name(message: Message, state: FSMContext):
     await state.set_state(BookingStates.entering_phone)
     await message.answer(
         "Введите номер телефона для связи:\n"
-        "Например: +79001234567 или 89001234567"
+        "Например: +37477275369 или 077275369"
     )
 
 
@@ -222,7 +222,7 @@ async def process_phone(message: Message, state: FSMContext):
     phone = message.text.strip().replace(" ", "").replace("-", "")
     # Простая проверка
     digits = "".join(c for c in phone if c.isdigit())
-    if len(digits) < 10:
+    if len(digits) < 9:
         await message.answer("Некорректный номер. Попробуйте ещё раз:")
         return
 
