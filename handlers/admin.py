@@ -1,11 +1,17 @@
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
 from aiogram.filters import Command
-from datetime import datetime
+from datetime import datetime, date
 
 from config import ADMIN_IDS
 from keyboards import admin_menu_kb, main_menu_kb
 from database import get_all_active_appointments, get_appointments_by_date
+
+
+def _format_date_short(value: str | date) -> str:
+    if isinstance(value, str):
+        return datetime.fromisoformat(value).strftime("%d.%m")
+    return value.strftime("%d.%m")
 
 router = Router()
 
@@ -64,7 +70,7 @@ async def admin_all(callback: CallbackQuery):
     else:
         text = "📋 <b>Ближайшие записи:</b>\n\n"
         for ap in appointments:
-            date_display = datetime.fromisoformat(ap["date"]).strftime("%d.%m")
+            date_display = _format_date_short(ap["date"])
             text += (
                 f"#{ap['id']} | {date_display} {ap['time']}\n"
                 f"   {ap['service']} / {ap['doctor']}\n"

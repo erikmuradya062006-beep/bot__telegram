@@ -4,7 +4,7 @@ from aiogram import Router, F, Bot
 from aiogram.types import Message, CallbackQuery
 from aiogram.filters import Command, CommandStart
 from aiogram.fsm.context import FSMContext
-from datetime import datetime, timedelta, time as dt_time
+from datetime import datetime, date, timedelta, time as dt_time
 
 from config import ADMIN_IDS, CLINIC_NAME, WORK_START_HOUR, WORK_END_HOUR, SLOT_MINUTES
 from states import BookingStates
@@ -28,6 +28,12 @@ from database import (
 
 router = Router()
 logger = logging.getLogger(__name__)
+
+
+def _format_date(value: str | date) -> str:
+    if isinstance(value, str):
+        return datetime.fromisoformat(value).strftime("%d.%m.%Y")
+    return value.strftime("%d.%m.%Y")
 
 
 def generate_time_slots() -> list[str]:
@@ -148,7 +154,7 @@ async def process_date(callback: CallbackQuery, state: FSMContext):
         return
 
     await state.set_state(BookingStates.choosing_time)
-    date_display = datetime.fromisoformat(date_str).strftime("%d.%m.%Y")
+    date_display = _format_date(date_str)
     await callback.message.edit_text(
         f"Дата: <b>{date_display}</b>\nВрач: <b>{doctor}</b>\n\nВыберите время:",
         reply_markup=times_kb(available),
@@ -232,7 +238,7 @@ async def process_phone(message: Message, state: FSMContext):
     await state.update_data(phone=phone)
     data = await state.get_data()
 
-    date_display = datetime.fromisoformat(data["date"]).strftime("%d.%m.%Y")
+    date_display = _format_date(data["date"])
     text = (
         f"📋 <b>Проверьте данные записи:</b>\n\n"
         f"Услуга: <b>{data['service']}</b>\n"
@@ -313,7 +319,7 @@ async def confirm_booking(callback: CallbackQuery, state: FSMContext, bot: Bot):
         await callback.answer()
         return
 
-    date_display = datetime.fromisoformat(date_str).strftime("%d.%m.%Y")
+    date_display = _format_date(date_str)
     await callback.message.edit_text(
         f"✅ <b>Вы успешно записаны!</b>\n\n"
         f"Номер записи: <code>#{appointment_id}</code>\n"
@@ -371,7 +377,7 @@ async def my_appointments(message: Message):
 
     text = "📋 <b>Ваши записи:</b>\n\n"
     for ap in appointments:
-        date_display = datetime.fromisoformat(ap["date"]).strftime("%d.%m.%Y")
+        date_display = _format_date(ap["date"])
         text += (
             f"#{ap['id']} — {date_display} в {ap['time']}\n"
             f"   {ap['service']} / {ap['doctor']}\n\n"
@@ -398,7 +404,7 @@ async def process_cancel(callback: CallbackQuery, bot: Bot):
     success = await cancel_appointment(appointment_id, callback.from_user.id)
     if success and ap:
         await callback.message.edit_text(f"✅ Запись #{appointment_id} отменена.")
-        date_display = datetime.fromisoformat(ap["date"]).strftime("%d.%m.%Y")
+        date_display = _format_date(ap["date"])
         admin_text = (
             f"❌ Клиент отменил запись #{appointment_id}\n\n"
             f"Клиент: {ap['full_name']} ({ap['phone']})\n"
