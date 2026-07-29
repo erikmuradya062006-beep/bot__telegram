@@ -7,7 +7,7 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_IDS = [int(x) for x in os.getenv("ADMIN_IDS", "808010571").split(",") if x.strip()]
 
 # Клиника
-CLINIC_NAME = "Стоматологическая клиника"
+CLINIC_NAME = "Стоматологическую клиника"
 
 # Услуги
 SERVICES = [
