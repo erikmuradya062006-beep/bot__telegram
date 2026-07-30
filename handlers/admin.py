@@ -20,13 +20,13 @@ def is_admin(user_id: int) -> bool:
     return user_id in ADMIN_IDS
 
 
-@router.message(F.text == "🛠 Админ-панель")
+@router.message(F.text == "🛠 Admin Panel")
 async def admin_panel(message: Message):
     if not is_admin(message.from_user.id):
-        await message.answer("У вас нет доступа.")
+        await message.answer("You do not have access.")
         return
     await message.answer(
-        "🛠 <b>Админ-панель</b>\n\nВыберите действие:",
+        "🛠 <b>Admin Panel</b>\n\nChoose an action:",
         reply_markup=admin_menu_kb(),
         parse_mode="HTML",
     )
@@ -35,21 +35,21 @@ async def admin_panel(message: Message):
 @router.callback_query(F.data == "admin_today")
 async def admin_today(callback: CallbackQuery):
     if not is_admin(callback.from_user.id):
-        await callback.answer("Нет доступа", show_alert=True)
+        await callback.answer("Access denied", show_alert=True)
         return
 
     today = datetime.now().date().isoformat()
     appointments = await get_appointments_by_date(today)
 
     if not appointments:
-        text = f"📅 На сегодня ({datetime.now().strftime('%d.%m.%Y')}) записей нет."
+        text = f"📅 No appointments for today ({datetime.now().strftime('%d.%m.%Y')})."
     else:
-        text = f"📅 <b>Записи на сегодня ({datetime.now().strftime('%d.%m.%Y')}):</b>\n\n"
+        text = f"📅 <b>Today's appointments ({datetime.now().strftime('%d.%m.%Y')}):</b>\n\n"
         for ap in appointments:
             text += (
                 f"⏰ <b>{ap['time']}</b> — {ap['service']}\n"
-                f"   Врач: {ap['doctor']}\n"
-                f"   Клиент: {ap['full_name']} ({ap['phone']})\n"
+                f"   Doctor: {ap['doctor']}\n"
+                f"   Client: {ap['full_name']} ({ap['phone']})\n"
                 f"   ID: #{ap['id']}\n\n"
             )
 
@@ -60,15 +60,15 @@ async def admin_today(callback: CallbackQuery):
 @router.callback_query(F.data == "admin_all")
 async def admin_all(callback: CallbackQuery):
     if not is_admin(callback.from_user.id):
-        await callback.answer("Нет доступа", show_alert=True)
+        await callback.answer("Access denied", show_alert=True)
         return
 
     appointments = await get_all_active_appointments(limit=30)
 
     if not appointments:
-        text = "Ближайших активных записей нет."
+        text = "No upcoming active appointments."
     else:
-        text = "📋 <b>Ближайшие записи:</b>\n\n"
+        text = "📋 <b>Upcoming appointments:</b>\n\n"
         for ap in appointments:
             date_display = _format_date_short(ap["date"])
             text += (

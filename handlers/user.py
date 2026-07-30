@@ -37,12 +37,12 @@ def _format_date(value: str | date) -> str:
 
 
 def generate_time_slots() -> list[str]:
-    """Генерирует слоты с 09:00 до 17:00 с интервалом 45 мин"""
+    """Generate available time slots from 09:00 to 17:00 with 45-minute intervals."""
     slots = []
     current = datetime.strptime(f"{WORK_START_HOUR}:00", "%H:%M")
     end = datetime.strptime(f"{WORK_END_HOUR}:00", "%H:%M")
     delta = timedelta(minutes=SLOT_MINUTES)
-    while current + delta <= end + timedelta(minutes=1):  # допускаем окончание около 17:00
+    while current + delta <= end + timedelta(minutes=1):  # allow ending around 17:00
         slots.append(current.strftime("%H:%M"))
         current += delta
     return slots
@@ -56,19 +56,19 @@ async def cmd_start(message: Message, state: FSMContext):
     await state.clear()
     is_admin = message.from_user.id in ADMIN_IDS
     await message.answer(
-        f"👋 Добро пожаловать в {CLINIC_NAME}!\n\n"
-        "Здесь вы можете записаться на приём к стоматологу.\n"
-        "Выберите действие в меню:",
+        f"👋 Welcome to {CLINIC_NAME}!\n\n"
+        "You can book a dental appointment here.\n"
+        "Choose an action from the menu:",
         reply_markup=main_menu_kb(is_admin),
     )
 
 
-@router.message(F.text == "📅 Записаться")
+@router.message(F.text == "📅 Book Appointment")
 async def start_booking(message: Message, state: FSMContext):
     await state.clear()
     await state.set_state(BookingStates.choosing_service)
     await message.answer(
-        "Выберите услугу:",
+        "Choose a service:",
         reply_markup=services_kb(),
     )
 
@@ -77,9 +77,9 @@ async def start_booking(message: Message, state: FSMContext):
 async def back_to_menu(callback: CallbackQuery, state: FSMContext):
     await state.clear()
     is_admin = callback.from_user.id in ADMIN_IDS
-    await callback.message.edit_text("Главное меню. Выберите действие ниже 👇")
+    await callback.message.edit_text("Main menu. Choose an action below 👇")
     await callback.message.answer(
-        "Выберите действие:",
+        "Choose an action:",
         reply_markup=main_menu_kb(is_admin),
     )
     await callback.answer()
@@ -91,7 +91,7 @@ async def process_service(callback: CallbackQuery, state: FSMContext):
     await state.update_data(service=service)
     await state.set_state(BookingStates.choosing_doctor)
     await callback.message.edit_text(
-        f"Услуга: <b>{service}</b>\n\nВыберите врача:",
+        f"Service: <b>{service}</b>\n\nChoose a doctor:",
         reply_markup=doctors_kb(),
         parse_mode="HTML",
     )
@@ -101,7 +101,7 @@ async def process_service(callback: CallbackQuery, state: FSMContext):
 @router.callback_query(F.data == "back_to_service")
 async def back_to_service(callback: CallbackQuery, state: FSMContext):
     await state.set_state(BookingStates.choosing_service)
-    await callback.message.edit_text("Выберите услугу:", reply_markup=services_kb())
+    await callback.message.edit_text("Choose a service:", reply_markup=services_kb())
     await callback.answer()
 
 
@@ -111,7 +111,7 @@ async def process_doctor(callback: CallbackQuery, state: FSMContext):
     await state.update_data(doctor=doctor)
     await state.set_state(BookingStates.choosing_date)
     await callback.message.edit_text(
-        f"Врач: <b>{doctor}</b>\n\nВыберите дату:",
+        f"Doctor: <b>{doctor}</b>\n\nChoose a date:",
         reply_markup=dates_kb(),
         parse_mode="HTML",
     )
@@ -123,7 +123,7 @@ async def back_to_doctor(callback: CallbackQuery, state: FSMContext):
     await state.set_state(BookingStates.choosing_doctor)
     data = await state.get_data()
     await callback.message.edit_text(
-        f"Услуга: <b>{data.get('service')}</b>\n\nВыберите врача:",
+        f"Service: <b>{data.get('service')}</b>\n\nChoose a doctor:",
         reply_markup=doctors_kb(),
         parse_mode="HTML",
     )
@@ -140,7 +140,7 @@ async def process_date(callback: CallbackQuery, state: FSMContext):
     booked = await get_booked_slots(doctor, date_str)
     available = [t for t in ALL_SLOTS if t not in booked]
 
-    # Если сегодня — убираем прошедшие слоты
+    # If the selected date is today, remove past slots
     today = datetime.now().date().isoformat()
     if date_str == today:
         now = datetime.now()
@@ -150,13 +150,13 @@ async def process_date(callback: CallbackQuery, state: FSMContext):
         ]
 
     if not available:
-        await callback.answer("На эту дату нет свободных слотов 😔", show_alert=True)
+        await callback.answer("No available slots on that date 😔", show_alert=True)
         return
 
     await state.set_state(BookingStates.choosing_time)
     date_display = _format_date(date_str)
     await callback.message.edit_text(
-        f"Дата: <b>{date_display}</b>\nВрач: <b>{doctor}</b>\n\nВыберите время:",
+        f"Date: <b>{date_display}</b>\nDoctor: <b>{doctor}</b>\n\nChoose a time:",
         reply_markup=times_kb(available),
         parse_mode="HTML",
     )
@@ -168,7 +168,7 @@ async def back_to_date(callback: CallbackQuery, state: FSMContext):
     await state.set_state(BookingStates.choosing_date)
     data = await state.get_data()
     await callback.message.edit_text(
-        f"Врач: <b>{data.get('doctor')}</b>\n\nВыберите дату:",
+        f"Doctor: <b>{data.get('doctor')}</b>\n\nChoose a date:",
         reply_markup=dates_kb(),
         parse_mode="HTML",
     )
@@ -182,9 +182,9 @@ async def process_time(callback: CallbackQuery, state: FSMContext):
     doctor = data["doctor"]
     date_str = data["date"]
 
-    # Проверка, не заняли ли слот пока выбирали
+    # Check again in case the slot was taken while the user was selecting
     if await is_slot_taken(doctor, date_str, time_str):
-        await callback.answer("Это время только что заняли. Выберите другое.", show_alert=True)
+        await callback.answer("This time was just taken. Please choose another.", show_alert=True)
         booked = await get_booked_slots(doctor, date_str)
         available = [t for t in ALL_SLOTS if t not in booked]
         today = datetime.now().date().isoformat()
@@ -195,10 +195,10 @@ async def process_time(callback: CallbackQuery, state: FSMContext):
                 if datetime.strptime(t, "%H:%M").time() > (now + timedelta(minutes=30)).time()
             ]
         if not available:
-            await callback.message.edit_text("К сожалению, свободных слотов больше нет.")
+            await callback.message.edit_text("Unfortunately, there are no more free slots.")
             return
         await callback.message.edit_text(
-            "Выберите другое время:",
+            "Choose another time:",
             reply_markup=times_kb(available),
         )
         return
@@ -206,7 +206,7 @@ async def process_time(callback: CallbackQuery, state: FSMContext):
     await state.update_data(time=time_str)
     await state.set_state(BookingStates.entering_name)
     await callback.message.edit_text(
-        "Введите ваше <b>ФИО</b> (как в паспорте или как удобно):",
+        "Enter your full name (as on your ID or how you prefer):",
         parse_mode="HTML",
     )
     await callback.answer()
@@ -216,13 +216,13 @@ async def process_time(callback: CallbackQuery, state: FSMContext):
 async def process_name(message: Message, state: FSMContext):
     name = message.text.strip()
     if len(name) < 3:
-        await message.answer("Слишком короткое имя. Введите ФИО полностью:")
+        await message.answer("Name is too short. Please enter your full name:")
         return
     await state.update_data(full_name=name)
     await state.set_state(BookingStates.entering_phone)
     await message.answer(
-        "Введите номер телефона для связи:\n"
-        "Например: +37477275369 или 077275369"
+        "Enter your contact phone number:\n"
+        "For example: +1 555 123 4567 or 555-123-4567"
     )
 
 
@@ -232,7 +232,7 @@ async def process_phone(message: Message, state: FSMContext):
     # Простая проверка
     digits = "".join(c for c in phone if c.isdigit())
     if len(digits) < 9:
-        await message.answer("Некорректный номер. Попробуйте ещё раз:")
+        await message.answer("Invalid phone number. Please try again:")
         return
 
     await state.update_data(phone=phone)
@@ -240,14 +240,14 @@ async def process_phone(message: Message, state: FSMContext):
 
     date_display = _format_date(data["date"])
     text = (
-        f"📋 <b>Проверьте данные записи:</b>\n\n"
-        f"Услуга: <b>{data['service']}</b>\n"
-        f"Врач: <b>{data['doctor']}</b>\n"
-        f"Дата: <b>{date_display}</b>\n"
-        f"Время: <b>{data['time']}</b>\n"
-        f"ФИО: <b>{data['full_name']}</b>\n"
-        f"Телефон: <b>{data['phone']}</b>\n\n"
-        f"Всё верно?"
+        f"📋 <b>Review your booking details:</b>\n\n"
+        f"Service: <b>{data['service']}</b>\n"
+        f"Doctor: <b>{data['doctor']}</b>\n"
+        f"Date: <b>{date_display}</b>\n"
+        f"Time: <b>{data['time']}</b>\n"
+        f"Full name: <b>{data['full_name']}</b>\n"
+        f"Phone: <b>{data['phone']}</b>\n\n"
+        f"Is everything correct?"
     )
     await state.set_state(BookingStates.confirming)
     await message.answer(text, reply_markup=confirm_kb(), parse_mode="HTML")
@@ -268,7 +268,7 @@ async def confirm_booking(callback: CallbackQuery, state: FSMContext, bot: Bot):
         time_str,
     )
 
-    # Финальная проверка слота
+    # Final slot check
     if await is_slot_taken(doctor, date_str, time_str):
         logger.warning(
             "Slot already taken at confirmation: user_id=%s doctor=%s date=%s time=%s",
@@ -278,8 +278,8 @@ async def confirm_booking(callback: CallbackQuery, state: FSMContext, bot: Bot):
             time_str,
         )
         await callback.message.edit_text(
-            "😔 К сожалению, это время только что заняли.\n"
-            "Пожалуйста, начните запись заново."
+            "😔 Unfortunately, this time was just taken.\n"
+            "Please start the booking again."
         )
         await state.clear()
         await callback.answer()
@@ -313,7 +313,7 @@ async def confirm_booking(callback: CallbackQuery, state: FSMContext, bot: Bot):
             time_str,
         )
         await callback.message.edit_text(
-            "❌ Произошла ошибка при сохранении записи. Попробуйте снова позже."
+            "❌ An error occurred while saving your appointment. Please try again later."
         )
         await state.clear()
         await callback.answer()
@@ -321,25 +321,25 @@ async def confirm_booking(callback: CallbackQuery, state: FSMContext, bot: Bot):
 
     date_display = _format_date(date_str)
     await callback.message.edit_text(
-        f"✅ <b>Вы успешно записаны!</b>\n\n"
-        f"Номер записи: <code>#{appointment_id}</code>\n"
-        f"Услуга: {data['service']}\n"
-        f"Врач: {doctor}\n"
-        f"Дата: {date_display}\n"
-        f"Время: {time_str}\n\n"
-        f"Мы ждём вас! Если нужно отменить — используйте меню.",
+        f"✅ <b>Your appointment is confirmed!</b>\n\n"
+        f"Booking number: <code>#{appointment_id}</code>\n"
+        f"Service: {data['service']}\n"
+        f"Doctor: {doctor}\n"
+        f"Date: {date_display}\n"
+        f"Time: {time_str}\n\n"
+        f"We look forward to seeing you! Use the menu to cancel if needed.",
         parse_mode="HTML",
     )
 
-    # Уведомление админам
+    # Notify admins
     admin_text = (
-        f"🆕 <b>Новая запись #{appointment_id}</b>\n\n"
-        f"Клиент: {data['full_name']}\n"
-        f"Телефон: {data['phone']}\n"
+        f"🆕 <b>New appointment #{appointment_id}</b>\n\n"
+        f"Client: {data['full_name']}\n"
+        f"Phone: {data['phone']}\n"
         f"Username: @{callback.from_user.username or '—'}\n"
-        f"Услуга: {data['service']}\n"
-        f"Врач: {doctor}\n"
-        f"Дата: {date_display} в {time_str}"
+        f"Service: {data['service']}\n"
+        f"Doctor: {doctor}\n"
+        f"Date: {date_display} at {time_str}"
     )
     for admin_id in ADMIN_IDS:
         try:
@@ -350,7 +350,7 @@ async def confirm_booking(callback: CallbackQuery, state: FSMContext, bot: Bot):
     await state.clear()
     is_admin = callback.from_user.id in ADMIN_IDS
     await callback.message.answer(
-        "Главное меню:",
+        "Main menu:",
         reply_markup=main_menu_kb(is_admin),
     )
     await callback.answer()
@@ -360,39 +360,39 @@ async def confirm_booking(callback: CallbackQuery, state: FSMContext, bot: Bot):
 async def cancel_confirm(callback: CallbackQuery, state: FSMContext):
     await state.clear()
     is_admin = callback.from_user.id in ADMIN_IDS
-    await callback.message.edit_text("Запись отменена.")
+    await callback.message.edit_text("Appointment cancelled.")
     await callback.message.answer(
-        "Выберите действие:",
+        "Choose an action:",
         reply_markup=main_menu_kb(is_admin),
     )
     await callback.answer()
 
 
-@router.message(F.text == "📋 Мои записи")
+@router.message(F.text == "📋 My Appointments")
 async def my_appointments(message: Message):
     appointments = await get_user_appointments(message.from_user.id)
     if not appointments:
-        await message.answer("У вас нет активных записей.")
+        await message.answer("You have no active appointments.")
         return
 
-    text = "📋 <b>Ваши записи:</b>\n\n"
+    text = "📋 <b>Your appointments:</b>\n\n"
     for ap in appointments:
         date_display = _format_date(ap["date"])
         text += (
-            f"#{ap['id']} — {date_display} в {ap['time']}\n"
+            f"#{ap['id']} — {date_display} at {ap['time']}\n"
             f"   {ap['service']} / {ap['doctor']}\n\n"
         )
     await message.answer(text, parse_mode="HTML")
 
 
-@router.message(F.text == "❌ Отменить запись")
+@router.message(F.text == "❌ Cancel Appointment")
 async def cancel_start(message: Message):
     appointments = await get_user_appointments(message.from_user.id)
     if not appointments:
-        await message.answer("У вас нет активных записей для отмены.")
+        await message.answer("You have no active appointments to cancel.")
         return
     await message.answer(
-        "Выберите запись, которую хотите отменить:",
+        "Choose the appointment you want to cancel:",
         reply_markup=cancel_appointments_kb(appointments),
     )
 
@@ -403,15 +403,15 @@ async def process_cancel(callback: CallbackQuery, bot: Bot):
     ap = await get_appointment_by_id(appointment_id)
     success = await cancel_appointment(appointment_id, callback.from_user.id)
     if success and ap:
-        await callback.message.edit_text(f"✅ Запись #{appointment_id} отменена.")
+        await callback.message.edit_text(f"✅ Appointment #{appointment_id} cancelled.")
         date_display = _format_date(ap["date"])
         admin_text = (
-            f"❌ Клиент отменил запись #{appointment_id}\n\n"
-            f"Клиент: {ap['full_name']} ({ap['phone']})\n"
+            f"❌ Client cancelled appointment #{appointment_id}\n\n"
+            f"Client: {ap['full_name']} ({ap['phone']})\n"
             f"Username: @{callback.from_user.username or '—'}\n"
-            f"Услуга: {ap['service']}\n"
-            f"Врач: {ap['doctor']}\n"
-            f"Дата: {date_display} в {ap['time']}"
+            f"Service: {ap['service']}\n"
+            f"Doctor: {ap['doctor']}\n"
+            f"Date: {date_display} at {ap['time']}"
         )
         for admin_id in ADMIN_IDS:
             try:
@@ -419,10 +419,10 @@ async def process_cancel(callback: CallbackQuery, bot: Bot):
             except Exception:
                 pass
     else:
-        await callback.message.edit_text("Не удалось отменить запись (возможно, она уже отменена).")
+        await callback.message.edit_text("Failed to cancel the appointment (it may already be cancelled).")
     await callback.answer()
     is_admin = callback.from_user.id in ADMIN_IDS
     await callback.message.answer(
-        "Главное меню:",
+        "Main menu:",
         reply_markup=main_menu_kb(is_admin),
     )

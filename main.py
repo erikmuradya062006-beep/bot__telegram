@@ -18,10 +18,10 @@ logger = logging.getLogger(__name__)
 
 async def main():
     if not BOT_TOKEN:
-        raise ValueError("BOT_TOKEN не установлен! Добавьте его в переменные окружения.")
+        raise ValueError("BOT_TOKEN is not set! Add it to environment variables.")
 
     await init_db()
-    logger.info("База данных инициализирована")
+    logger.info("Database initialized")
 
     bot = Bot(
         token=BOT_TOKEN,
@@ -33,7 +33,7 @@ async def main():
     dp.include_router(user.router)
     dp.include_router(admin.router)
 
-    logger.info("Бот запускается...")
+    logger.info("Bot is starting...")
     await dp.start_polling(bot)
 
 

@@ -1,91 +1,84 @@
-# Telegram-бот записи в стоматологическую клинику
+# Dental Appointment Telegram Bot
 
-Бот на **Python + aiogram 3** для онлайн-записи клиентов.
+A Telegram appointment bot built with **Python + aiogram 3** for booking dental services online.
 
-## Возможности
+## Features
 
-**Клиенты:**
-- Запись: услуга → врач → дата → время → ФИО → телефон → подтверждение
-- Просмотр своих записей
-- Отмена записи
-- Уведомления администратору о новых записях и отменах
+**Clients:**
+- Book an appointment: service → doctor → date → time → full name → phone → confirmation
+- View own appointments
+- Cancel an appointment
+- Admin notifications on new bookings and cancellations
 
-**Администратор (ID: 808010571):**
-- Просмотр записей на сегодня
-- Просмотр всех ближайших записей
-- Получение уведомлений в личку
+**Administrator:**
+- View today's appointments
+- View upcoming appointments
+- Receive booking and cancellation alerts
 
-## Настройки клиники
+## Clinic settings
 
-- Услуги: Консультация, Чистка, Лечение кариеса, Удаление зуба
-- Врачи: Иванов А.С., Петрова М.И., Сидоров Д.А., Козлова А.В. (можно изменить в `config.py`)
-- Часы: 09:00–17:00, кроме воскресенья
-- Интервал: 45 минут
-- Запись максимум на 14 дней вперёд
+- Services: Consultation, Cleaning, Cavity Treatment, Tooth Extraction
+- Doctors: John Smith, Emily Johnson, Michael Brown, Olivia Davis (update in `config.py`)
+- Hours: 09:00–17:00, closed on Sundays
+- Interval: 45 minutes
+- Bookings available for up to 14 days ahead
 
-## Быстрый старт (локально)
+## Quick start (local)
 
-1. Установите зависимости:
+1. Install dependencies:
 ```bash
 pip install -r requirements.txt
 ```
 
-2. Создайте файл `.env`:
-```
-BOT_TOKEN=ваш_токен_от_BotFather
+2. Create a `.env` file:
+```bash
+BOT_TOKEN=your_token_from_BotFather
 ADMIN_IDS=808010571
 ```
 
-3. Запустите:
+3. Run the bot:
 ```bash
 python main.py
 ```
 
-## Деплой на Railway (рекомендуется)
+## PostgreSQL support
 
-1. Зарегистрируйтесь на [railway.app](https://railway.app) (можно через GitHub).
-2. Создайте новый проект → **Deploy from GitHub repo** (сначала загрузите код в свой репозиторий)  
-   **Или** используйте **Empty Project** + загрузите файлы через Railway CLI / веб-интерфейс.
-3. Добавьте переменные окружения:
-   - `BOT_TOKEN` = ваш токен
+Set `DATABASE_URL` in your `.env` if you want to use an external PostgreSQL database. Otherwise, the bot will use a local SQLite database by default.
+
+## Deploy to Railway (recommended)
+
+1. Sign up at [railway.app](https://railway.app).
+2. Create a new project and deploy from GitHub, or use an empty service and upload the repository.
+3. Add environment variables:
+   - `BOT_TOKEN` = your bot token
    - `ADMIN_IDS` = 808010571
-4. В настройках сервиса укажите:
-   - **Start Command**: `python main.py`
-   - **Root Directory**: если нужно
-5. Deploy. Бот будет работать 24/7.
+   - `DATABASE_URL` = your PostgreSQL connection URL (optional)
+4. Set the start command to:
+   - `python main.py`
+5. Deploy.
 
-### Альтернатива без GitHub:
-- Создайте проект на Railway
-- Используйте Railway CLI:
-```bash
-npm i -g @railway/cli
-railway login
-railway init
-railway up
-```
+## Change doctors / services
 
-## Изменение врачей / услуг
+Open `config.py` and update the `SERVICES` and `DOCTORS` lists.
 
-Откройте `config.py` и измените списки `SERVICES` и `DOCTORS`.
-
-## Структура проекта
+## Project structure
 
 ```
-dental_bot/
-├── main.py              # Точка входа
-├── config.py            # Настройки
-├── database.py          # SQLite
-├── states.py            # FSM состояния
-├── keyboards.py         # Клавиатуры
-├── handlers/
-│   ├── user.py          # Клиентская часть
-│   └── admin.py         # Админ-панель
+bot__telegram/
+├── main.py              # Entry point
+├── config.py            # Configuration
+├── database.py          # Database layer
+├── states.py            # FSM states
+├── keyboards.py         # Keyboard layout helpers
+├── handlers/            # Message and callback handlers
+│   ├── user.py          # User booking flow
+│   └── admin.py         # Admin interface
 ├── requirements.txt
 └── .env.example
 ```
 
-## Важно
+## Important
 
-- База данных SQLite создаётся автоматически (`clinic.db`).
-- На Railway данные сохраняются между перезапусками (volume по умолчанию).
-- Для продакшена с большой нагрузкой позже можно перейти на PostgreSQL.
+- The SQLite database is created automatically (`clinic.db`).
+- On Railway, data is persisted between restarts by default.
+- For higher production load, switch to PostgreSQL.
